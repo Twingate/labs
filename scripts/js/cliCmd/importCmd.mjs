@@ -15,7 +15,7 @@ export const importCmd = new Command()
         options.networkName = networkName;
         let client = new TwingateApiClient(networkName, apiKey);
 
-        let fileData = await Deno.readFile("./monabriventures-2021-12-20_16-28-33.xlsx");
+        let fileData = await Deno.readFile(options.file);
         let wb = XLSX.read(fileData,{type:'array', cellDates: true});
         let sheetNames = wb.SheetNames;
         let typesToFetch = [];
