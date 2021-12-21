@@ -493,7 +493,19 @@ export class TwingateApiClient {
         const createGroupQuery = "mutation CreateGroup($name:String!,$resourceIds:[ID],$userIds:[ID]){groupCreate(name:$name,resourceIds:$resourceIds,userIds:$userIds){entity{id}}}";
         let groupsResponse = await this.exec(createGroupQuery, {name, resourceIds, userIds} );
         return groupsResponse.entity;
+    }
 
+    async createRemoteNetwork(name) {
+        const createRemoteNetworkQuery = "mutation CreateRemoteNetwork($name:String!){remoteNetworkCreate(name:$name){entity{id}}}";
+        let createRemoteNetworkResponse = await this.exec(createRemoteNetworkQuery, {name} );
+        return createRemoteNetworkResponse.entity;
+    }
+
+
+    async createResource(name, address, remoteNetworkId, protocols = null, groupIds = []) {
+        //const createResourcQuery = "mutation CreateResource($name:String!){remoteNetworkCreate(name:$name){entity{id}}}";
+        //let createResourceResponse = await this.exec(createResourcQuery, {name} );
+        //return createResourceResponse.entity;
     }
 
     /**
