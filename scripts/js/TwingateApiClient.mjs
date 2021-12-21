@@ -406,7 +406,7 @@ export class TwingateApiClient {
             // TODO
         }
         else if ( !fieldSet.includes(TwingateApiClient.FieldSet.ALL) ) {
-            let fieldsToInclude = [];
+            let fieldsToInclude = fieldOptions.extraFields || [];
             if ( fieldSet.includes(TwingateApiClient.FieldSet.ID) ) fieldsToInclude.push("id");
             if ( fieldSet.includes(TwingateApiClient.FieldSet.LABEL) ) fieldsToInclude.push(schema.labelField);
             if ( fieldSet.includes(TwingateApiClient.FieldSet.CONNECTIONS) ) fieldsToInclude.push(...schema.connectionFields);
@@ -490,22 +490,42 @@ export class TwingateApiClient {
 
 
     async createGroup(name, resourceIds, userIds) {
-        const createGroupQuery = "mutation CreateGroup($name:String!,$resourceIds:[ID],$userIds:[ID]){groupCreate(name:$name,resourceIds:$resourceIds,userIds:$userIds){entity{id}}}";
+        const createGroupQuery = "mutation CreateGroup($name:String!,$resourceIds:[ID],$userIds:[ID]){result:groupCreate(name:$name,resourceIds:$resourceIds,userIds:$userIds){entity{id}}}";
         let groupsResponse = await this.exec(createGroupQuery, {name, resourceIds, userIds} );
-        return groupsResponse.entity;
+        return groupsResponse.result.entity;
     }
 
     async createRemoteNetwork(name) {
-        const createRemoteNetworkQuery = "mutation CreateRemoteNetwork($name:String!){remoteNetworkCreate(name:$name){entity{id}}}";
+        const createRemoteNetworkQuery = "mutation CreateRemoteNetwork($name:String!){result:remoteNetworkCreate(name:$name){entity{id}}}";
         let createRemoteNetworkResponse = await this.exec(createRemoteNetworkQuery, {name} );
-        return createRemoteNetworkResponse.entity;
+        return createRemoteNetworkResponse.result.entity;
     }
 
-
     async createResource(name, address, remoteNetworkId, protocols = null, groupIds = []) {
-        //const createResourcQuery = "mutation CreateResource($name:String!){remoteNetworkCreate(name:$name){entity{id}}}";
-        //let createResourceResponse = await this.exec(createResourcQuery, {name} );
-        //return createResourceResponse.entity;
+        const createResourceQuery = "mutation CreateResource($name:String!,$address:String!,$remoteNetworkId:ID!,$protocols:ProtocolsInput,$groupIds:[ID]){result:resourceCreate(address:$address,groupIds:$groupIds,name:$name,protocols:$protocols,remoteNetworkId:$remoteNetworkId){entity{id}}}";
+        let createResourceResponse = await this.exec(createResourceQuery, {name, address, remoteNetworkId, protocols, groupIds} );
+        return createResourceResponse.result.entity;
+    }
+
+    async removeGroup(id) {
+        const removeGroupQuery = "mutation RemoveGroup($id:ID!){result:groupDelete(id:$id){ok, error}}";
+        let removeGroupResponse = await this.exec(removeGroupQuery, {id});
+        if ( !removeGroupResponse.result.ok ) throw new Error(`Error removing group '${id}' ${removeGroupResponse.result.error}`);
+        return true;
+    }
+
+    async removeRemoteNetwork(id) {
+        const removeRemoteNetworkQuery = "mutation RemoveRemoteNetwork($id:ID!){result:remoteNetworkDelete(id:$id){ok, error}}";
+        let removeRemoteNetworkResponse = await this.exec(removeRemoteNetworkQuery, {id});
+        if ( !removeRemoteNetworkResponse.result.ok ) throw new Error(`Error removing remote network '${id}' ${removeRemoteNetworkResponse.result.error}`);
+        return true;
+    }
+
+    async removeResource(id) {
+        const removeResourceQuery = "mutation RemoveResource($id:ID!){result:resourceDelete(id:$id){ok, error}}";
+        let removeResourceResponse = await this.exec(removeResourceQuery, {id});
+        if ( !removeResourceResponse.result.ok ) throw new Error(`Error removing resource '${id}' ${removeResourceResponse.result.error}`);
+        return true;
     }
 
     /**

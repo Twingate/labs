@@ -11,6 +11,7 @@ import {TwingateApiClient} from "../TwingateApiClient.mjs";
 import {exists as fileExists} from "https://deno.land/std/fs/mod.ts";
 import {decryptData, encryptData} from "../crypto.mjs";
 import {Log} from "./log.js";
+import {Input} from "https://deno.land/x/cliffy@v0.20.1/prompt/input.ts";
 
 export function genFileNameFromNetworkName(networkName, extension = "xlsx") {
     const
@@ -22,30 +23,44 @@ export function genFileNameFromNetworkName(networkName, extension = "xlsx") {
 
 
 export async function loadNetworkAndApiKey(networkName = null) {
-    let apiKey = null, saveConfig = false, availableNetworks = [];
+    let apiKey = null,
+        saveConfig = false,
+        keyConf = {},
+        availableNetworks = [];
     const
+        confirmMultipleNetworks = networkName == null,
         keyFile = ".tgkeys",
         keyFilePath = `./${keyFile}`,
         networkNamePrompt = {
-            name: "networkName", message: `Enter Twingate network name:`,
+            name: "networkName", message: `Enter Twingate account:`,
             hint: `For example, '${Colors.red("acme")}' for '${Colors.red("acme")}.twingate.com'`, type: InputPrompt,
             suggestions: availableNetworks,
             validate: async (networkName) => ((await TwingateApiClient.testNetworkValid(networkName)) ? true : `Network not found: '${networkName}'.`)
         },
         apiKeyPrompt = {name: "apiKey", message: `Enter API key:`, type: SecretPrompt},
         saveConfigConfirmation = {
-            name: "saveConfig", message: `Save network and API key to file?`,
+            name: "saveConfig", message: `Save account and API key to file?`,
             hint: `Will be saved to '${Colors.yellow(keyFile)}'.`, type: TogglePrompt
+        },
+        chooseAccountPrompt = {
+            message: "Choose Twingate account",
+            hint: "There are multiple accounts in the key file, please choose which to use. Use Tab key to complete an option and Return to confirm.",
+            list: true
         }
     ;
 
     try {
         if (false === await fileExists(keyFilePath)) throw new Error("Keyfile does not exist");
         let confFileData = await decryptData(await Deno.readFile(keyFilePath));
-        let keyConf = JSON.parse(confFileData);
-        networkName = networkName || keyConf["networkName"];
+        keyConf = JSON.parse(confFileData);
         // TODO fix case of no network name + multiple apiKeys
         if ( typeof keyConf.apiKeys === "object" ) availableNetworks.push(...Object.keys(keyConf.apiKeys));
+        if ( confirmMultipleNetworks && availableNetworks.length > 1 ) {
+            networkName = await Input.prompt({/*default: keyConf.networkName, */suggestions: availableNetworks, ...chooseAccountPrompt});
+        }
+        else {
+            networkName = networkName || keyConf["networkName"];
+        }
         if (networkName == null) throw new Error("Network missing");
         let apiKey = keyConf.apiKeys[networkName];
         if (apiKey == null) throw new Error("API key missing in config.");
@@ -60,10 +75,12 @@ export async function loadNetworkAndApiKey(networkName = null) {
         ({saveConfig} = await prompt([saveConfigConfirmation]));
 
         if (saveConfig === true) {
-            let keyConf = {
+            let existingApiKeys = keyConf.apiKeys;
+            keyConf = {
                 networkName,
                 apiKeys: {
-                    [networkName]: apiKey
+                    [networkName]: apiKey,
+                    ...existingApiKeys
                 },
                 _version: TwingateApiClient.VERSION
             }

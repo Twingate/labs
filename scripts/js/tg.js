@@ -8,6 +8,7 @@ import {
     getTopLevelCommand
 } from "./cliCmd/cmd.mjs";
 import {importCmd} from "./cliCmd/importCmd.mjs";
+import {removeAllCmd} from "./cliCmd/removeAllCmd.mjs";
 
 async function main(args) {
 
@@ -19,6 +20,8 @@ async function main(args) {
         .description("CLI for Twingate")
         .command("export", exportCmd)
         .command("import", importCmd)
+        .command("remove-all", removeAllCmd)
+
     ;
     for ( const command of topLevelCommands ) cmd = cmd.command(command, getTopLevelCommand(command));
     return await cmd.parse(args);
