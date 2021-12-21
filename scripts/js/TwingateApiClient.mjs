@@ -155,11 +155,13 @@ export class TwingateApiClient {
             defaultRequestOptions: {method: "POST"},
             defaultRequestHeaders: {"Content-Type": "application/json", 'Accept': 'application/json'},
             onApiError: null,
+            logger: console,
             silenceApiErrorsWithResults: false,
             defaultPageSize: 0
         };
-        const {domain, endpoint, defaultRequestOptions, defaultRequestHeaders, onApiError, silenceApiErrorsWithResults,
-            defaultPageSize} = Object.assign(defaultOpts, opts);
+
+        const {domain, endpoint, defaultRequestOptions, defaultRequestHeaders, onApiError, logger,
+            silenceApiErrorsWithResults, defaultPageSize} = Object.assign(defaultOpts, opts);
 
 
         this.networkName = networkName;
@@ -172,6 +174,8 @@ export class TwingateApiClient {
         this.defaultRequestHeaders = defaultRequestHeaders;
 
         this.onApiError = onApiError;
+        this.logger = logger;
+        this.silenceApiErrorsWithResults = silenceApiErrorsWithResults;
     }
 
     /**
@@ -458,8 +462,8 @@ export class TwingateApiClient {
         const groupsQuery = "query Groups($name:String){groups(filter:{name:{eq:$name}}){edges{node{id name users{pageInfo{hasNextPage endCursor}edges{node{id}}}resources{pageInfo{hasNextPage endCursor}edges{node{id}}}}}}}";
         let groupsResponse = await this.exec(groupsQuery, {name} );
         let numGroups = groupsResponse.groups.edges.length;
-        if ( numGroups != 1 ) {
-            console.warn(`Searching for group with name '${name}' returned ${numGroups} results.`)
+        if ( numGroups !== 1 ) {
+            this.logger.warn(`Searching for group with name '${name}' returned ${numGroups} results.`)
             return;
         }
 
@@ -535,7 +539,7 @@ export class TwingateApiClient {
 
                 let labelFieldArr = typeProps.fields.filter(f => f.isLabel);
                 if (labelFieldArr.length === 1) typeProps.labelField = labelFieldArr[0].name;
-                else console.warn(`No label field found for type '${typeName}'!`);
+                else this.logger.warn(`No label field found for type '${typeName}'!`);
             }
         }
 

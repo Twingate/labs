@@ -1,5 +1,6 @@
 import {genFileNameFromNetworkName, loadNetworkAndApiKey, setLastConnectedOnUser} from "../utils/smallUtilFuncs.mjs";
 import {TwingateApiClient} from "../TwingateApiClient.mjs";
+import {Log} from "../utils/log.js";
 import XLSX from "https://cdn.esm.sh/v58/xlsx@0.17.4/deno/xlsx.js";
 import * as Colors from "https://deno.land/std/fmt/colors.ts";
 import {Command, EnumType} from "https://deno.land/x/cliffy/command/mod.ts";
@@ -195,9 +196,9 @@ export const exportCmd = new Command()
         let client = new TwingateApiClient(networkName, apiKey);
         let outputFn = outputFnMap[options.format];
         if (outputFn == null) {
-            console.log(Colors.red(`Unsupported option: '${options.format}'`));
+            Log.error(`Unsupported option: '${options.format}'`);
             return;
         }
         await outputFn(client, options);
-        console.log(Colors.green(`Export to '${options.outputFile}' completed.`));
+        Log.success(`Export to '${options.outputFile}' completed.`);
     });

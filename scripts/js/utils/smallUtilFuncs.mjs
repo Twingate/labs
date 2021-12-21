@@ -10,6 +10,7 @@ import {
 import {TwingateApiClient} from "../TwingateApiClient.mjs";
 import {exists as fileExists} from "https://deno.land/std/fs/mod.ts";
 import {decryptData, encryptData} from "../crypto.mjs";
+import {Log} from "./log.js";
 
 export function genFileNameFromNetworkName(networkName, extension = "xlsx") {
     const
@@ -48,6 +49,7 @@ export async function loadNetworkAndApiKey(networkName = null) {
         if (networkName == null) throw new Error("Network missing");
         let apiKey = keyConf.apiKeys[networkName];
         if (apiKey == null) throw new Error("API key missing in config.");
+        Log.info(`Using Twingate account: ${networkName}`);
         return {networkName, apiKey};
     } catch (e) {
         if ( networkName != null ) networkNamePrompt.default = networkName;
@@ -66,7 +68,7 @@ export async function loadNetworkAndApiKey(networkName = null) {
                 _version: TwingateApiClient.VERSION
             }
             await Deno.writeFile(keyFilePath, await encryptData(JSON.stringify(keyConf)), {mode: 0o600});
-            console.info("Configuration file saved.");
+            Log.info("Configuration file saved.");
         }
         return {networkName, apiKey};
     }

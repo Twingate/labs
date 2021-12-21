@@ -2,10 +2,12 @@
 
 import {Command} from "https://deno.land/x/cliffy/command/mod.ts";
 import {TwingateApiClient} from "./TwingateApiClient.mjs";
+import {Log} from "./utils/log.js";
 import {
     exportCmd,
     getTopLevelCommand
 } from "./cliCmd/cmd.mjs";
+import {importCmd} from "./cliCmd/importCmd.mjs";
 
 async function main(args) {
 
@@ -13,8 +15,10 @@ async function main(args) {
     let cmd = new Command()
         .name("tg")
         .version(TwingateApiClient.VERSION)
-        .description("CLI interface for Twingate")
+        .option("-a, --network-name <string>", "Twingate account name", {global: true})
+        .description("CLI for Twingate")
         .command("export", exportCmd)
+        .command("import", importCmd)
     ;
     for ( const command of topLevelCommands ) cmd = cmd.command(command, getTopLevelCommand(command));
     return await cmd.parse(args);
@@ -23,5 +27,5 @@ async function main(args) {
 try {
     await main(Deno.args);
 } catch (e) {
-    console.error(`Exception: ${e.stack||e}`);
+    Log.exception(e);
 }

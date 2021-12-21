@@ -106,7 +106,7 @@ export function getTopLevelCommand(name) {
         .description(`Twingate ${name}s`)
         .command("list", getListCommand(name))
     ;
-    if ( name == "group" ) {
+    if ( name === "group" ) {
         cmd = cmd.command("copy", getCopyCommand(name))
     }
     return cmd;
