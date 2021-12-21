@@ -16,13 +16,6 @@ export const removeAllCmd = new Command()
         if ( !(await Confirm.prompt(`${Colors.red("THIS WILL DELETE ALL Groups, Resources and Remote Networks in this account.")} Please confirm to continue?`)) ) return;
         let client = new TwingateApiClient(networkName, apiKey);
 
-        const allNodes = await client.fetchAll({
-            fieldOpts: {
-                defaultObjectFieldSet: [TwingateApiClient.FieldSet.ID]
-            },
-            typesToFetch: ["Group", "Resource", "RemoteNetwork"]
-        });
-
         const groups = await client.fetchAllGroups({fieldSet: [TwingateApiClient.FieldSet.ID], fieldOpts:{extraFields: ["type"]}});
         for ( const group of groups) {
             if ( group.type === "MANUAL") await client.removeGroup(group.id);

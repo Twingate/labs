@@ -39,3 +39,7 @@ Thereafter you can execute the binary without deno: ``./tg --help``
 **Example - List resources**
 
 ``./tg.js resource list``
+
+**Example - Import Groups, Remote Networks and resources into a new account **
+
+``./tg.js import -a [new account name] -nrg -f [path to file to import from (format must be as outputted by the export command)]``
