@@ -44,7 +44,7 @@ export async function loadNetworkAndApiKey(networkName = null) {
         },
         chooseAccountPrompt = {
             message: "Choose Twingate account",
-            hint: "There are multiple accounts in the key file, please choose which to use. Use Tab key to complete an option and Return to confirm.",
+            hint: "There are multiple accounts in the config file, please select one. Use Arrow keys (↑, ↓) to navigate, Tab (⇥) to select an option and Return (↵) to confirm.",
             list: true
         }
     ;
@@ -64,7 +64,7 @@ export async function loadNetworkAndApiKey(networkName = null) {
         if (networkName == null) throw new Error("Network missing");
         let apiKey = keyConf.apiKeys[networkName];
         if (apiKey == null) throw new Error("API key missing in config.");
-        Log.info(`Using Twingate account: ${networkName}`);
+        Log.info(`Using Twingate account: '${Colors.italic(networkName)}'`);
         return {networkName, apiKey};
     } catch (e) {
         if ( networkName != null ) networkNamePrompt.default = networkName;

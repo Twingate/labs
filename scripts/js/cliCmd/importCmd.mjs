@@ -55,11 +55,54 @@ async function writeImportResults(data, outputFilename) {
     await Deno.writeFile(`./${outputFilename}`, new Uint8Array(XLSX.write(ImportResultsWb, {type: "array"})));
 }
 
+const portTestRegEx = /^[0-9]+$/.compile();
+function tryProcessPortRestrictionString(restrictions) {
+    // 443, 8080-8090
+    const validatePortNumber = (port) => {
+        if ( !portTestRegEx.test(port) ) throw new Error(`Invalid port: ${port}`);
+        let portNum = Number(port);
+        if ( portNum < 1 || portNum > 65535 ) throw new Error(`Invalid port range: ${portNum}`);
+        return portNum;
+    }
+    const singleRestrictionToObj = (restriction) => {
+        restriction = restriction.trim();
+        let ports = restriction.split('-');
+        if ( ports.length > 2 ) throw new Error(`Invalid port restriction: ${restriction}`);
+        let start = validatePortNumber(ports[0]);
+        let end = ports.length === 2 ? validatePortNumber(ports[1]) : start;
+        if ( start > end ) throw new Error(`Invalid port restriction - end greater than start: ${restriction}`);
+        return {start,end};
+    };
+    return restrictions.split(",").map(singleRestrictionToObj);
+}
+
+function tryResourceRowToProtocols(resourceRow) {
+    if ( typeof resourceRow.protocolsAllowIcmp === "string") {
+        resourceRow.protocolsAllowIcmp = resourceRow.protocolsAllowIcmp.trim().toUpperCase();
+        resourceRow.protocolsAllowIcmp = ["YES", "Y", "TRUE"].includes(resourceRow.protocolsAllowIcmp);
+    }
+    if ( resourceRow.protocolsTcpPolicy === "ALLOW_ALL" && resourceRow.protocolsUdpPolicy === "ALLOW_ALL" && resourceRow.protocolsAllowIcmp === true) {
+        return null;
+    }
+
+    let protocols = {
+        allowIcmp: resourceRow.protocolsAllowIcmp,
+        tcp: {
+            policy: resourceRow.protocolsTcpPolicy,
+            ports: tryProcessPortRestrictionString(resourceRow.protocolsTcpPorts)
+        },
+        udp: {
+            policy: resourceRow.protocolsUdpPolicy,
+            ports: tryProcessPortRestrictionString(resourceRow.protocolsUdpPorts)
+        }
+    }
+    return protocols
+}
 export const importCmd = new Command()
     .option("-f, --file <string>", "Path to Excel file to import from")
-    .option("-n, --remote-networks", "Import Remote Networks")
-    .option("-r, --resources", "Import Resources")
-    .option("-g, --groups", "Import Groups")
+    .option("-n, --remote-networks", "Include Remote Networks")
+    .option("-r, --resources", "Include Resources")
+    .option("-g, --groups", "Include Groups")
     .description("Import from excel file to a Twingate account")
     .action(async (options) => {
         const {networkName, apiKey} = await loadNetworkAndApiKey(options.networkName);
@@ -96,10 +139,12 @@ export const importCmd = new Command()
             if ( nodeLabelIdMap.RemoteNetwork[node.name] != null ) {
                 throw new Error(`Remote Network with duplicate name found: '${node.name}' - Ids: ['${nodeLabelIdMap.RemoteNetwork[node.name]}', '${node.id}']`);
             }
-            node.resourceNames = node.resources.map( resourceId => nodeIdMap[resourceId].name );
-            node.resources = node.resources.map( resourceId => nodeIdMap[resourceId] );
-            if ( node.resourceNames.length !== (new Set(node.resourceNames)).size ) {
-                throw new Error(`Remote network '${node.name}' contains resources with duplicate names`);
+            if ( options.resources ) {
+                node.resourceNames = node.resources.map(resourceId => nodeIdMap[resourceId].name);
+                node.resources = node.resources.map(resourceId => nodeIdMap[resourceId]);
+                if (node.resourceNames.length !== (new Set(node.resourceNames)).size) {
+                    throw new Error(`Remote network '${node.name}' contains resources with duplicate names`);
+                }
             }
             nodeLabelIdMap.RemoteNetwork[node.name] = node.id;
         }
@@ -126,7 +171,7 @@ export const importCmd = new Command()
                             continue;
                         }
 
-                        // 2. Check if Group
+                        // 2. Check if Group exists
                         let existingId = nodeLabelIdMap.Group[groupRow.name];
                         if ( existingId != null ) {
                             Log.info(`Group with same name already exists, will skip: '${groupRow.name}'`);
@@ -167,13 +212,8 @@ export const importCmd = new Command()
                             resourceRow["importId"] = existingRemoteNetwork.resources.filter(r => r.name === resourceRow.name)[0];
                             continue;
                         }
-                        // TODO Validate protocol input
-                        if ( resourceRow.protocolsTcpPolicy !== "ALLOW_ALL" || resourceRow.protocolsUdpPolicy !== "ALLOW_ALL" || resourceRow.protocolsAllowIcmp !== true) {
-                            Log.error(`Resource '${resourceRow.name}' has protocol restriction that is currently unsupported.`);
-                            resourceRow["importAction"] = "SKIP";
-                            resourceRow["importId"] = null;
-                            continue;
-                        }
+                        resourceRow["_protocol"] = tryResourceRowToProtocols(resourceRow);
+
                         Log.info(`Resource will be created: '${resourceRow.name}' in Remote Network '${resourceRow.remoteNetworkLabel}'`);
                         resourceRow["importAction"] = "CREATE";
                         resourceRow["importId"] = null;
@@ -229,8 +269,9 @@ export const importCmd = new Command()
                                 return groupId;
                             })
                             .filter(groupId => groupId != null)
-                        let newResource = await client.createResource(resourceRow.name, resourceRow.addressValue, remoteNetwork.id, null, groupIds);
+                        let newResource = await client.createResource(resourceRow.name, resourceRow.addressValue, remoteNetwork.id, resourceRow._protocol, groupIds);
                         resourceRow.importId = newResource.id;
+                        delete resourceRow._protocol;
                         remoteNetwork.resourceNames.push(resourceRow.name);
                         remoteNetwork.resources.push({name: resourceRow.name, _imported: true});
                     }
@@ -245,4 +286,5 @@ export const importCmd = new Command()
         await writeImportResults(mergeMap, outputFilename);
         // Log completion
         Log.success(`Import to '${networkName}' completed. Results written to: '${outputFilename}'.`);
+        return;
     });
