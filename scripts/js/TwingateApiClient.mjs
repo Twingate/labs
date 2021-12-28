@@ -426,7 +426,6 @@ export class TwingateApiClient {
             switch (fieldDef.type) {
                 case "Object": return `${fieldDef.name}{${fieldDef.nodeFields||this._getFields(fieldDef.typeName, fieldDef.fieldSet, fieldDef.fieldOptions)}}`;
                 case "Node": return `${fieldDef.name}{${fieldDef.nodeFields||this._getFields(fieldDef.typeName, fieldDef.fieldSet || fieldSet, fieldDef.fieldOptions)}}`;
-                //case "Connection": return `${fieldDef.name}(first:2){pageInfo{hasNextPage endCursor}edges{node{${fieldDef.nodeFields||"id"}}}}`;
                 case "Connection": return `${fieldDef.name}{pageInfo{hasNextPage endCursor}edges{node{${fieldDef.nodeFields||"id"}}}}`;
                 default: return fieldDef.name;
             }

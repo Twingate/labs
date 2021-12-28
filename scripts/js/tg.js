@@ -5,10 +5,10 @@ import {TwingateApiClient} from "./TwingateApiClient.mjs";
 import {Log} from "./utils/log.js";
 import {
     exportCmd,
+    removeAllCmd,
+    importCmd,
     getTopLevelCommand
 } from "./cliCmd/cmd.mjs";
-import {importCmd} from "./cliCmd/importCmd.mjs";
-import {removeAllCmd} from "./cliCmd/removeAllCmd.mjs";
 
 async function main(args) {
 
