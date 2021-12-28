@@ -105,8 +105,8 @@ export const importCmd = new Command()
     .option("-g, --groups", "Include Groups")
     .description("Import from excel file to a Twingate account")
     .action(async (options) => {
-        const {networkName, apiKey} = await loadNetworkAndApiKey(options.networkName);
-        options.networkName = networkName;
+        const {networkName, apiKey} = await loadNetworkAndApiKey(options.accountName);
+        options.accountName = networkName;
         let client = new TwingateApiClient(networkName, apiKey);
 
         let fileData = await Deno.readFile(options.file);
@@ -282,7 +282,7 @@ export const importCmd = new Command()
             }
         }
         // Write results
-        let outputFilename = `importResults-${genFileNameFromNetworkName(options.networkName)}`;
+        let outputFilename = `importResults-${genFileNameFromNetworkName(options.accountName)}`;
         await writeImportResults(mergeMap, outputFilename);
         // Log completion
         Log.success(`Import to '${networkName}' completed. Results written to: '${outputFilename}'.`);

@@ -66,6 +66,7 @@ export class TwingateApiClient {
         },
         "Group": {
             isNode: true,
+            canCreate: true,
             fields: [
                 {name: "createdAt", type: "datetime"},
                 {name: "updatedAt", type: "datetime"},
@@ -78,6 +79,7 @@ export class TwingateApiClient {
         },
         "Resource": {
             isNode: true,
+            canCreate: true,
             fields: [
                 {name: "name", type: "string", isLabel: true, canQuery: true},
                 {name: "createdAt", type: "datetime"},
@@ -91,6 +93,7 @@ export class TwingateApiClient {
         },
         "RemoteNetwork": {
             isNode: true,
+            canCreate: true,
             queryNodeField: "remoteNetwork",
             queryConnectionField: "remoteNetworks",
             fields: [

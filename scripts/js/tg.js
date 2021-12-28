@@ -12,11 +12,11 @@ import {removeAllCmd} from "./cliCmd/removeAllCmd.mjs";
 
 async function main(args) {
 
-    const topLevelCommands = ["resource", "group", "user", "network", "connector", "device"];
+    const topLevelCommands = ["resource", "group", "user", "network", "connector"/*, "device"*/];
     let cmd = new Command()
         .name("tg")
         .version(TwingateApiClient.VERSION)
-        .option("-a, --network-name <string>", "Twingate account name", {global: true})
+        .option("-a, --account-name <string>", "Twingate account name", {global: true})
         .description("CLI for Twingate")
         .command("export", exportCmd)
         .command("import", importCmd)

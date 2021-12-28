@@ -137,14 +137,14 @@ async function outputDot(client, options) {
 
 async function exportDot(client, options) {
     let dot = await outputDot(client, options);
-    options.outputFile = options.outputFile || genFileNameFromNetworkName(options.networkName, options.format);
+    options.outputFile = options.outputFile || genFileNameFromNetworkName(options.accountName, options.format);
     return await Deno.writeTextFile(`./${options.outputFile}`, dot);
 }
 
 
 async function exportImage(client, options) {
     let dot = await outputDot(client, options);
-    options.outputFile = options.outputFile || genFileNameFromNetworkName(options.networkName, options.format);
+    options.outputFile = options.outputFile || genFileNameFromNetworkName(options.accountName, options.format);
     return await renderDot(dot, `./${options.outputFile}`, {format: options.format});
 }
 
@@ -172,7 +172,7 @@ async function exportExcel(client, options) {
         ws['!autofilter'] = {ref: ws["!ref"]};
         XLSX.utils.book_append_sheet(wb, ws, typeName);
     }
-    options.outputFile = options.outputFile || genFileNameFromNetworkName(options.networkName);
+    options.outputFile = options.outputFile || genFileNameFromNetworkName(options.accountName);
     await Deno.writeFile(`./${options.outputFile}`, new Uint8Array(XLSX.write(wb, {type: "array"})));
 }
 
@@ -190,8 +190,8 @@ export const exportCmd = new Command()
     .option("-o, --output-file [value:string]", "Output filename")
     .description("Export from account to various formats")
     .action(async (options) => {
-        const {networkName, apiKey} = await loadNetworkAndApiKey(options.networkName);
-        options.networkName = networkName;
+        const {networkName, apiKey} = await loadNetworkAndApiKey(options.accountName);
+        options.accountName = networkName;
         let client = new TwingateApiClient(networkName, apiKey);
         let outputFn = outputFnMap[options.format];
         if (outputFn == null) {
