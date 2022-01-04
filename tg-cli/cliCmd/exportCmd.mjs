@@ -1,7 +1,7 @@
 import {genFileNameFromNetworkName, loadNetworkAndApiKey, setLastConnectedOnUser} from "../utils/smallUtilFuncs.mjs";
 import {TwingateApiClient} from "../TwingateApiClient.mjs";
+import {Log} from "../utils/log.js";
 import XLSX from "https://cdn.esm.sh/v58/xlsx@0.17.4/deno/xlsx.js";
-import * as Colors from "https://deno.land/std/fmt/colors.ts";
 import {Command, EnumType} from "https://deno.land/x/cliffy/command/mod.ts";
 import {
     attribute,
@@ -137,14 +137,14 @@ async function outputDot(client, options) {
 
 async function exportDot(client, options) {
     let dot = await outputDot(client, options);
-    options.outputFile = options.outputFile || genFileNameFromNetworkName(options.networkName, options.format);
+    options.outputFile = options.outputFile || genFileNameFromNetworkName(options.accountName, options.format);
     return await Deno.writeTextFile(`./${options.outputFile}`, dot);
 }
 
 
 async function exportImage(client, options) {
     let dot = await outputDot(client, options);
-    options.outputFile = options.outputFile || genFileNameFromNetworkName(options.networkName, options.format);
+    options.outputFile = options.outputFile || genFileNameFromNetworkName(options.accountName, options.format);
     return await renderDot(dot, `./${options.outputFile}`, {format: options.format});
 }
 
@@ -172,7 +172,7 @@ async function exportExcel(client, options) {
         ws['!autofilter'] = {ref: ws["!ref"]};
         XLSX.utils.book_append_sheet(wb, ws, typeName);
     }
-    options.outputFile = options.outputFile || genFileNameFromNetworkName(options.networkName);
+    options.outputFile = options.outputFile || genFileNameFromNetworkName(options.accountName);
     await Deno.writeFile(`./${options.outputFile}`, new Uint8Array(XLSX.write(wb, {type: "array"})));
 }
 
@@ -190,14 +190,14 @@ export const exportCmd = new Command()
     .option("-o, --output-file [value:string]", "Output filename")
     .description("Export from account to various formats")
     .action(async (options) => {
-        const {networkName, apiKey} = await loadNetworkAndApiKey(options.networkName);
-        options.networkName = networkName;
+        const {networkName, apiKey} = await loadNetworkAndApiKey(options.accountName);
+        options.accountName = networkName;
         let client = new TwingateApiClient(networkName, apiKey);
         let outputFn = outputFnMap[options.format];
         if (outputFn == null) {
-            console.log(Colors.red(`Unsupported option: '${options.format}'`));
+            Log.error(`Unsupported option: '${options.format}'`);
             return;
         }
         await outputFn(client, options);
-        console.log(Colors.green(`Export to '${options.outputFile}' completed.`));
+        Log.success(`Export to '${options.outputFile}' completed.`);
     });

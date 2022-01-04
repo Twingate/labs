@@ -66,6 +66,7 @@ export class TwingateApiClient {
         },
         "Group": {
             isNode: true,
+            canCreate: true,
             fields: [
                 {name: "createdAt", type: "datetime"},
                 {name: "updatedAt", type: "datetime"},
@@ -78,6 +79,7 @@ export class TwingateApiClient {
         },
         "Resource": {
             isNode: true,
+            canCreate: true,
             fields: [
                 {name: "name", type: "string", isLabel: true, canQuery: true},
                 {name: "createdAt", type: "datetime"},
@@ -91,6 +93,7 @@ export class TwingateApiClient {
         },
         "RemoteNetwork": {
             isNode: true,
+            canCreate: true,
             queryNodeField: "remoteNetwork",
             queryConnectionField: "remoteNetworks",
             fields: [
@@ -155,11 +158,13 @@ export class TwingateApiClient {
             defaultRequestOptions: {method: "POST"},
             defaultRequestHeaders: {"Content-Type": "application/json", 'Accept': 'application/json'},
             onApiError: null,
+            logger: console,
             silenceApiErrorsWithResults: false,
             defaultPageSize: 0
         };
-        const {domain, endpoint, defaultRequestOptions, defaultRequestHeaders, onApiError, silenceApiErrorsWithResults,
-            defaultPageSize} = Object.assign(defaultOpts, opts);
+
+        const {domain, endpoint, defaultRequestOptions, defaultRequestHeaders, onApiError, logger,
+            silenceApiErrorsWithResults, defaultPageSize} = Object.assign(defaultOpts, opts);
 
 
         this.networkName = networkName;
@@ -172,6 +177,8 @@ export class TwingateApiClient {
         this.defaultRequestHeaders = defaultRequestHeaders;
 
         this.onApiError = onApiError;
+        this.logger = logger;
+        this.silenceApiErrorsWithResults = silenceApiErrorsWithResults;
     }
 
     /**
@@ -402,7 +409,7 @@ export class TwingateApiClient {
             // TODO
         }
         else if ( !fieldSet.includes(TwingateApiClient.FieldSet.ALL) ) {
-            let fieldsToInclude = [];
+            let fieldsToInclude = fieldOptions.extraFields || [];
             if ( fieldSet.includes(TwingateApiClient.FieldSet.ID) ) fieldsToInclude.push("id");
             if ( fieldSet.includes(TwingateApiClient.FieldSet.LABEL) ) fieldsToInclude.push(schema.labelField);
             if ( fieldSet.includes(TwingateApiClient.FieldSet.CONNECTIONS) ) fieldsToInclude.push(...schema.connectionFields);
@@ -419,7 +426,6 @@ export class TwingateApiClient {
             switch (fieldDef.type) {
                 case "Object": return `${fieldDef.name}{${fieldDef.nodeFields||this._getFields(fieldDef.typeName, fieldDef.fieldSet, fieldDef.fieldOptions)}}`;
                 case "Node": return `${fieldDef.name}{${fieldDef.nodeFields||this._getFields(fieldDef.typeName, fieldDef.fieldSet || fieldSet, fieldDef.fieldOptions)}}`;
-                //case "Connection": return `${fieldDef.name}(first:2){pageInfo{hasNextPage endCursor}edges{node{${fieldDef.nodeFields||"id"}}}}`;
                 case "Connection": return `${fieldDef.name}{pageInfo{hasNextPage endCursor}edges{node{${fieldDef.nodeFields||"id"}}}}`;
                 default: return fieldDef.name;
             }
@@ -458,8 +464,8 @@ export class TwingateApiClient {
         const groupsQuery = "query Groups($name:String){groups(filter:{name:{eq:$name}}){edges{node{id name users{pageInfo{hasNextPage endCursor}edges{node{id}}}resources{pageInfo{hasNextPage endCursor}edges{node{id}}}}}}}";
         let groupsResponse = await this.exec(groupsQuery, {name} );
         let numGroups = groupsResponse.groups.edges.length;
-        if ( numGroups != 1 ) {
-            console.warn(`Searching for group with name '${name}' returned ${numGroups} results.`)
+        if ( numGroups !== 1 ) {
+            this.logger.warn(`Searching for group with name '${name}' returned ${numGroups} results.`)
             return;
         }
 
@@ -486,10 +492,42 @@ export class TwingateApiClient {
 
 
     async createGroup(name, resourceIds, userIds) {
-        const createGroupQuery = "mutation CreateGroup($name:String!,$resourceIds:[ID],$userIds:[ID]){groupCreate(name:$name,resourceIds:$resourceIds,userIds:$userIds){entity{id}}}";
+        const createGroupQuery = "mutation CreateGroup($name:String!,$resourceIds:[ID],$userIds:[ID]){result:groupCreate(name:$name,resourceIds:$resourceIds,userIds:$userIds){entity{id}}}";
         let groupsResponse = await this.exec(createGroupQuery, {name, resourceIds, userIds} );
-        return groupsResponse.entity;
+        return groupsResponse.result.entity;
+    }
 
+    async createRemoteNetwork(name) {
+        const createRemoteNetworkQuery = "mutation CreateRemoteNetwork($name:String!){result:remoteNetworkCreate(name:$name){entity{id}}}";
+        let createRemoteNetworkResponse = await this.exec(createRemoteNetworkQuery, {name} );
+        return createRemoteNetworkResponse.result.entity;
+    }
+
+    async createResource(name, address, remoteNetworkId, protocols = null, groupIds = []) {
+        const createResourceQuery = "mutation CreateResource($name:String!,$address:String!,$remoteNetworkId:ID!,$protocols:ProtocolsInput,$groupIds:[ID]){result:resourceCreate(address:$address,groupIds:$groupIds,name:$name,protocols:$protocols,remoteNetworkId:$remoteNetworkId){entity{id}}}";
+        let createResourceResponse = await this.exec(createResourceQuery, {name, address, remoteNetworkId, protocols, groupIds} );
+        return createResourceResponse.result.entity;
+    }
+
+    async removeGroup(id) {
+        const removeGroupQuery = "mutation RemoveGroup($id:ID!){result:groupDelete(id:$id){ok, error}}";
+        let removeGroupResponse = await this.exec(removeGroupQuery, {id});
+        if ( !removeGroupResponse.result.ok ) throw new Error(`Error removing group '${id}' ${removeGroupResponse.result.error}`);
+        return true;
+    }
+
+    async removeRemoteNetwork(id) {
+        const removeRemoteNetworkQuery = "mutation RemoveRemoteNetwork($id:ID!){result:remoteNetworkDelete(id:$id){ok, error}}";
+        let removeRemoteNetworkResponse = await this.exec(removeRemoteNetworkQuery, {id});
+        if ( !removeRemoteNetworkResponse.result.ok ) throw new Error(`Error removing remote network '${id}' ${removeRemoteNetworkResponse.result.error}`);
+        return true;
+    }
+
+    async removeResource(id) {
+        const removeResourceQuery = "mutation RemoveResource($id:ID!){result:resourceDelete(id:$id){ok, error}}";
+        let removeResourceResponse = await this.exec(removeResourceQuery, {id});
+        if ( !removeResourceResponse.result.ok ) throw new Error(`Error removing resource '${id}' ${removeResourceResponse.result.error}`);
+        return true;
     }
 
     /**
@@ -535,7 +573,7 @@ export class TwingateApiClient {
 
                 let labelFieldArr = typeProps.fields.filter(f => f.isLabel);
                 if (labelFieldArr.length === 1) typeProps.labelField = labelFieldArr[0].name;
-                else console.warn(`No label field found for type '${typeName}'!`);
+                else this.logger.warn(`No label field found for type '${typeName}'!`);
             }
         }
 
