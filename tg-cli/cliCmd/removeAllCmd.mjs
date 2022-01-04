@@ -53,14 +53,12 @@ export const removeAllCmd = new Command()
 
         if ( options.resources ) {
             let allResources = await client.fetchAllResources({fieldSet: [TwingateApiClient.FieldSet.ID]});
-            let removePromises = allResources.map(resource => client.removeResource(resource.id));
-            await Promise.all(removePromises);
+            await Promise.all(allResources.map(resource => client.removeResource(resource.id)));
         }
 
         if ( options.remoteNetworks ) {
             let allRemoteNetworks = await client.fetchAllRemoteNetworks({fieldSet: [TwingateApiClient.FieldSet.ID]});
-            let removePromises = allRemoteNetworks.map(remoteNetwork => client.removeRemoteNetwork(remoteNetwork.id));
-            await Promise.all(removePromises);
+            await Promise.all(allRemoteNetworks.map(remoteNetwork => client.removeRemoteNetwork(remoteNetwork.id)));
         }
 
         Log.success(`Remove all completed.`);
